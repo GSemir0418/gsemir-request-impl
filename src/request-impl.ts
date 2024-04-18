@@ -1,57 +1,108 @@
 import type { AxiosInstance, AxiosRequestConfig } from 'axios'
-type RequestInstance = AxiosInstance
 
-export class RequestImpl {
-  instance: RequestInstance | undefined
+type FetchInstance = typeof fetch
 
-  constructor(instance: RequestInstance) {
-    this.instance = instance
+interface CommonRequestConfig {
+  url: string
+  method: string
+  headers?: Record<string, string>
+  body?: any
+}
 
-    this.instance.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('token')
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
-        return config
-      })
+interface CommonResponse<R> {
+  data: R
+  status: number
+  statusText: string
+}
 
-    this.instance.interceptors.response.use(
-      (response) => {
-        return response
-      },
-      (error) => {
-        const codeMessage: Record<number, string> = {
-          200: '服务器成功返回请求的数据。',
-          201: '新建或修改数据成功。',
-          400: '发出的请求有错误，服务器没有进行新建或修改数据的操作。',
-          500: '服务器发生错误，请检查服务器。'
-        }
-        if (error.response) {
-          const { status, statusText } = error.response
-          const { url } = error.response.config
-          const errorText = codeMessage[status] || statusText
-          alert(`请求错误 ${status}: ${url} ${errorText}`)
-        }
-      }
-    )
+interface Interceptor<R> {
+  request?: (config: CommonRequestConfig) => CommonRequestConfig
+  response?: (response: CommonResponse<R>) => CommonResponse<R>
+}
+
+interface HttpClient<R> {
+  request(config: CommonRequestConfig): Promise<CommonResponse<R>>
+  interceptors?: Interceptor<R>
+}
+
+class AxiosClient<R> implements HttpClient<R> {
+  axiosInstance: AxiosInstance
+  interceptors?: Interceptor<R>
+
+  constructor(axiosInstance: AxiosInstance) {
+    this.axiosInstance = axiosInstance
   }
 
-  get<R = unknown>(url: string, query?: Record<string, any>, config?: Omit<AxiosRequestConfig, 'method' |'params' |'url'>) {
-    return this.instance?.request<R>({
-      ...config,
-      url,
-      params: query,
-      method: 'get'
+  async request(config: CommonRequestConfig): Promise<CommonResponse<R>> {
+    const finalConfig = this.interceptors?.request ? this.interceptors.request(config) : config
+
+    const response = await this.axiosInstance.request<R>({
+      ...finalConfig,
+      params: config.method === 'get' ? config.body : undefined,
+      data: config.method === 'post' ? config.body : undefined
     })
+
+    const commonResponse = {
+      data: response.data,
+      status: response.status,
+      statusText: response.statusText
+    }
+
+    return this.interceptors?.response ? this.interceptors.response(commonResponse) : commonResponse
+  }
+}
+
+class FetchClient<R> implements HttpClient<R> {
+  interceptors?: Interceptor<R>
+
+  async request(config: CommonRequestConfig): Promise<CommonResponse<R>> {
+    // 应用请求拦截器
+    const finalConfig = this.interceptors?.request ? this.interceptors.request(config) : config
+
+    const init: RequestInit = {
+      method: finalConfig.method,
+      headers: finalConfig.headers,
+      body: finalConfig.method === 'post' ? JSON.stringify(finalConfig.body) : undefined
+    }
+
+    const response = await fetch(config.url, init)
+
+    const data = await response.json() as R
+
+    const commonResponse = {
+      data,
+      status: response.status,
+      statusText: response.statusText
+    }
+
+    return this.interceptors?.response ? this.interceptors.response(commonResponse) : commonResponse
+  }
+}
+
+export class RequestImpl<R = unknown> {
+  client: HttpClient<R>
+
+  constructor(client: AxiosInstance | FetchInstance) {
+    if ('request' in client) {
+      this.client = new AxiosClient(client as AxiosInstance)
+    } else {
+      this.client = new FetchClient()
+    }
   }
 
-  post<R = unknown>(url: string, data?: Record<string, any>, config?: Omit<AxiosRequestConfig, 'method' | 'url' | 'data'>) {
-    return this.instance?.request<R>({
-      ...config,
+  async get(url: string, query?: Record<string, any>): Promise<CommonResponse<R>> {
+    return this.client.request({
+      url,
+      method: 'get',
+      body: query,
+    });
+  }
+
+  async post(url: string, data?: Record<string, any>): Promise<CommonResponse<R>> {
+    return this.client.request({
       url,
       method: 'post',
-      data
-    })
+      body: data,
+    });
   }
 }
