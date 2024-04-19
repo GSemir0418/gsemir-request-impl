@@ -1,11 +1,22 @@
-npm init -y
+#### Install
 
-npx tsc --init
+```
+npm install gsemir-request-impl@latest
+```
 
-npm install -D typescript ts-node @types/axios
+#### Usage
 
-npm --registry=https://registry.npmjs.org login
+```typescript
+// fetch
+const req = new RequestImpl(fetch)
 
-npm --registry=https://registry.npmjs.org publish
+// axios
+const axiosInstance = axios.create()
+const req = new RequestImpl(axiosInstance)
 
-npm install -D vitest
+// get
+const res = await req.get('https://xxx.com', { page: 1, pageSize: 20 })
+
+// post
+const post = await req.post('https://xxx.com', { name: 'gsemir', age: 10 })
+```
