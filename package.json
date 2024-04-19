@@ -1,24 +1,26 @@
 {
   "name": "gsemir-request-lib",
+  "type": "module",
   "version": "0.1.0",
   "description": "",
+  "author": "gsemir",
+  "license": "ISC",
+  "keywords": [],
   "main": "request-impl.js",
-  "type": "module",
   "types": "request-impl.d.ts",
   "scripts": {
     "build": "tsc",
     "test": "vitest"
   },
-  "keywords": [],
-  "author": "gsemir",
-  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.8"
+  },
   "devDependencies": {
+    "@antfu/eslint-config": "^2.15.0",
     "@types/axios": "^0.14.0",
+    "eslint": "^8.57.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
     "vitest": "^1.5.0"
-  },
-  "dependencies": {
-    "axios": "^1.6.8"
   }
 }

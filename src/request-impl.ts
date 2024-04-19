@@ -21,7 +21,7 @@ interface Interceptor<R> {
 }
 
 interface HttpClient<R> {
-  request(config: CommonRequestConfig): Promise<CommonResponse<R>>
+  request: (config: CommonRequestConfig) => Promise<CommonResponse<R>>
   interceptors?: Interceptor<R>
 }
 
@@ -39,13 +39,13 @@ class AxiosClient<R> implements HttpClient<R> {
     const response = await this.axiosInstance.request<R>({
       ...finalConfig,
       params: config.method === 'get' ? config.body : undefined,
-      data: config.method === 'post' ? config.body : undefined
+      data: config.method === 'post' ? config.body : undefined,
     })
 
     const commonResponse = {
       data: response.data,
       status: response.status,
-      statusText: response.statusText
+      statusText: response.statusText,
     }
 
     return this.interceptors?.response ? this.interceptors.response(commonResponse) : commonResponse
@@ -62,7 +62,7 @@ class FetchClient<R> implements HttpClient<R> {
     const init: RequestInit = {
       method: finalConfig.method,
       headers: finalConfig.headers,
-      body: finalConfig.method === 'post' ? JSON.stringify(finalConfig.body) : undefined
+      body: finalConfig.method === 'post' ? JSON.stringify(finalConfig.body) : undefined,
     }
 
     const response = await fetch(config.url, init)
@@ -72,7 +72,7 @@ class FetchClient<R> implements HttpClient<R> {
     const commonResponse = {
       data,
       status: response.status,
-      statusText: response.statusText
+      statusText: response.statusText,
     }
 
     return this.interceptors?.response ? this.interceptors.response(commonResponse) : commonResponse
@@ -83,11 +83,10 @@ export class RequestImpl<R = unknown> {
   client: HttpClient<R>
 
   constructor(client: AxiosInstance | FetchInstance) {
-    if ('request' in client) {
+    if ('request' in client)
       this.client = new AxiosClient(client as AxiosInstance)
-    } else {
+    else
       this.client = new FetchClient()
-    }
   }
 
   async get(url: string, query?: Record<string, any>): Promise<CommonResponse<R>> {
@@ -95,7 +94,7 @@ export class RequestImpl<R = unknown> {
       url,
       method: 'get',
       body: query,
-    });
+    })
   }
 
   async post(url: string, data?: Record<string, any>): Promise<CommonResponse<R>> {
@@ -103,6 +102,6 @@ export class RequestImpl<R = unknown> {
       url,
       method: 'post',
       body: data,
-    });
+    })
   }
 }
